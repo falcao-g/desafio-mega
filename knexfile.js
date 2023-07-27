@@ -1,3 +1,7 @@
+const dotenv = require('dotenv');
+
+dotenv.config();
+
 module.exports = {
     client: 'pg',
     version: process.env.PG_VERSION,
