@@ -1,3 +1,5 @@
+const { database } = require('../database/knex');
+
 function sendTradeOffer(req, res) {
   try {
     res.send({ message: 'Sending a trade offer' });
@@ -18,11 +20,23 @@ function acceptOrDeclineTradeOffer(req, res) {
 }
 
 function listAllTradeOffers(req, res) {
-  try {
-    res.send({ message: 'Listing all trade offers' });
-  } catch (err) {
-    console.error('Error while listing trade offers', err.message);
+  const { playerId } = req.body.payload;
+  if (!playerId) {
+    // Shouldn't occur with JWT authentication
+    res.status(400).send({ message: 'playerId unspecified' });
+    return;
   }
+
+  database.trade.findAllTradesFromPlayer(playerId)
+    .then((allPlayerTrades) => {
+      res.status(200).send(allPlayerTrades);
+    })
+    .catch((err) => {
+      res.status(500).send({
+        message: 'Internal Server Error :(',
+        error: err,
+      });
+    });
 }
 
 function cancelTradeOffer(req, res) {
