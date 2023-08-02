@@ -6,5 +6,12 @@ module.exports = (knex) => {
       .orderBy('value', 'name');
   }
 
-  return { findAllItemsFromPlayer };
+  function getItemDetails(playerUuid, itemUuid) {
+    return knex('item')
+      .select('*')
+      .where({ owner: playerUuid })
+      .andWhere({ uuid: itemUuid });
+  }
+
+  return { findAllItemsFromPlayer, getItemDetails };
 };

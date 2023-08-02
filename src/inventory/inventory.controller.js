@@ -14,11 +14,16 @@ function getPlayerInventory(req, res) {
 }
 
 function getItemDetails(req, res) {
-  try {
-    res.send({ message: 'Getting item details' });
-  } catch (err) {
-    console.error('Error while seeing player inventory', err.message);
-  }
+  database.inventory.getItemDetails(req.params.playerId, req.params.itemId)
+    .then((itemDetails) => {
+      res.status(200).send(itemDetails);
+    })
+    .catch((err) => {
+      res.status(500).send({
+        message: 'Internal Server Error :(',
+        error: err,
+      });
+    });
 }
 
 function sellItem(req, res) {
