@@ -27,11 +27,17 @@ function getItemDetails(req, res) {
 }
 
 function sellItem(req, res) {
-  try {
-    res.send({ message: 'Selling the item' });
-  } catch (err) {
-    console.error('Error while selling the item', err.message);
-  }
+  const { itemId } = req.query;
+  database.inventory.sellItem(itemId)
+    .then((message) => {
+      res.status(200).send(message);
+    })
+    .catch((err) => {
+      res.status(500).send({
+        message: 'Internal Server Error :(',
+        error: err,
+      });
+    });
 }
 
 module.exports = {
