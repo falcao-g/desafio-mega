@@ -15,24 +15,26 @@ module.exports = (knex) => {
   }
 
   async function sellItem(itemUuid) {
-    const item = await knex('item')
-      .where('uuid', itemUuid)
-      .select('value', 'owner')
-      .first();
+    return knex.transaction(async (trx) => {
+      const item = await trx('item')
+        .where('uuid', itemUuid)
+        .select('value', 'owner')
+        .first();
 
-    if (!item) {
-      return 'Item not found';
-    }
+      if (!item) {
+        return 'Item not found';
+      }
 
-    await knex('player')
-      .where('uuid', item.owner)
-      .increment('balance', item.value);
+      await trx('player')
+        .where('uuid', item.owner)
+        .increment('balance', item.value);
 
-    await knex('item')
-      .where('uuid', itemUuid)
-      .del();
+      await trx('item')
+        .where('uuid', itemUuid)
+        .del();
 
-    return `Item sold successfully for ${item.value}`;
+      return `Item sold successfully for ${item.value}`;
+    });
   }
 
   return { findAllItemsFromPlayer, getItemDetails, sellItem };
