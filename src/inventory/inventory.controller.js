@@ -1,9 +1,16 @@
+const { database } = require('../database/knex');
+
 function getPlayerInventory(req, res) {
-  try {
-    res.send({ message: 'Getting player inventory' });
-  } catch (err) {
-    console.error('Error while seeing player inventory', err.message);
-  }
+  database.inventory.findAllItemsFromPlayer(req.params.playerId)
+    .then((allPlayerItems) => {
+      res.status(200).send(allPlayerItems);
+    })
+    .catch((err) => {
+      res.status(500).send({
+        message: 'Internal Server Error :(',
+        error: err,
+      });
+    });
 }
 
 function getItemDetails(req, res) {
