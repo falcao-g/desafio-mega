@@ -1,4 +1,5 @@
 const { database } = require('../database/knex');
+const { TradeStatus } = require('../database/type/tradestatus');
 
 async function sendTradeOffer(req, res) {
   const proposer = req.body.payload.playerId;
@@ -108,11 +109,44 @@ function listAllTradeOffers(req, res) {
 }
 
 function cancelTradeOffer(req, res) {
-  try {
-    res.send({ message: 'Canceling trade offer' });
-  } catch (err) {
-    console.error('Error while canceling trade offer', err.message);
+  const { playerId } = req.body.payload;
+  const { tradeId } = req.params;
+
+  if (!playerId) {
+    // Shouldn't occur with JWT authentication
+    res.status(400).send({ message: 'playerId unspecified' });
+    return;
   }
+
+  database.trade.findOne(tradeId)
+    .then((trade) => {
+      const playerDidntProposedTheTrade = trade.proposer !== playerId;
+      if (playerDidntProposedTheTrade) {
+        return res.status(403).send({
+          message: 'You can\'t cancel a trade offer that you didn\'t proposed',
+        });
+      }
+      if (trade.status !== TradeStatus.PENDING) {
+        let message = 'Can\'t cancel trade offer';
+        if (trade.status === TradeStatus.CANCELED) message = 'Trade already canceled';
+        return res.status(400).send({
+          message,
+          status: trade.status,
+        });
+      }
+
+      return database.trade.setStatus(trade.uuid, TradeStatus.CANCELED).then(() => {
+        res.status(200).send({
+          uuid: tradeId,
+          status: TradeStatus.CANCELED,
+        });
+      });
+    })
+
+    .catch((err) => res.status(500).send({
+      message: 'Internal Server Error :(',
+      error: err,
+    }));
 }
 
 module.exports = {

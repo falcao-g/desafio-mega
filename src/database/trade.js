@@ -1,6 +1,20 @@
 const { v4 } = require('uuid');
+const { TradeStatus } = require('./type/tradestatus');
 
 module.exports = (knex) => {
+  function findOne(uuid) {
+    return knex('trade')
+      .select('*')
+      .where({ uuid })
+      .first();
+  }
+
+  function setStatus(uuid, status) {
+    return knex('trade')
+      .where({ uuid })
+      .update({ status });
+  }
+
   function findAllTradesFromPlayer(playerUuid) {
     return knex('trade')
       .select('*')
@@ -22,7 +36,7 @@ module.exports = (knex) => {
       .rightJoin('itemtrade', { 'item.uuid': 'itemtrade.item' })
       .leftJoin('trade', { 'itemtrade.trade': 'trade.uuid' })
       .whereIn('item.uuid', itemsUuid)
-      .andWhere('trade.status', 'PENDING');
+      .andWhere('trade.status', TradeStatus.PENDING);
   }
 
   function createTrade(proposer, acceptor, offeredItems, requestedItems) {
@@ -57,6 +71,11 @@ module.exports = (knex) => {
   }
 
   return {
-    findAllTradesFromPlayer, getItemsFromPlayer, getUntradeableItems, createTrade,
+    findOne,
+    setStatus,
+    findAllTradesFromPlayer,
+    getItemsFromPlayer,
+    getUntradeableItems,
+    createTrade,
   };
 };
