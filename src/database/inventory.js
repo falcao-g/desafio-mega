@@ -6,12 +6,18 @@ module.exports = (knex) => {
       .orderBy('value', 'name');
   }
 
-  function getItemDetails(playerUuid, itemUuid) {
-    return knex('item')
+  async function getItemDetails(playerUuid, itemUuid) {
+    const item = await knex('item')
       .select('*')
       .where({ owner: playerUuid })
       .andWhere({ uuid: itemUuid })
       .first();
+
+    if (!item) {
+      return { message: 'Item not found' };
+    }
+
+    return item;
   }
 
   async function sellItem(itemUuid) {
@@ -22,7 +28,7 @@ module.exports = (knex) => {
         .first();
 
       if (!item) {
-        return 'Item not found';
+        return { message: 'Item not found' };
       }
 
       await trx('player')
@@ -33,7 +39,7 @@ module.exports = (knex) => {
         .where('uuid', itemUuid)
         .del();
 
-      return `Item sold successfully for ${item.value}`;
+      return { message: `Item sold successfully for ${item.value}` };
     });
   }
 
