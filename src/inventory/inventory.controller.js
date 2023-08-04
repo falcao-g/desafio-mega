@@ -28,6 +28,14 @@ function getItemDetails(req, res) {
 
 function sellItem(req, res) {
   const { itemId } = req.query;
+
+  if (!itemId) {
+    res.status(400).send({
+      message: 'You need to specify an itemId to sell',
+    });
+    return;
+  }
+
   database.inventory.sellItem(itemId)
     .then((message) => {
       res.status(200).send(message);
