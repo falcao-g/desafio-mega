@@ -78,14 +78,64 @@ async function sendTradeOffer(req, res) {
 }
 
 function acceptOrDeclineTradeOffer(req, res) {
-  try {
-    res.send({ message: 'Accepting or declining trade offer' });
-  } catch (err) {
-    console.error(
-      'Error while accepting or declining trade offer',
-      err.message,
-    );
+  const { playerId } = req.body.payload;
+  const { tradeId, action } = req.body;
+
+  if (!playerId) {
+    // Shouldn't occur with JWT authentication
+    return res.status(400).send({ message: 'playerId unspecified' });
   }
+
+  if (!tradeId) {
+    return res.status(400).send({ message: 'tradeId unspecified' });
+  }
+
+  if (!action) {
+    return res.status(400).send({ message: 'action unspecified ( ACCEPT or RECUSE )' });
+  }
+
+  return database.trade.findOne(tradeId)
+    .then((trade) => {
+      const playerDidntProposedTheTrade = trade.acceptor !== playerId;
+      if (playerDidntProposedTheTrade) {
+        return res.status(403).send({
+          message: 'You can\'t cancel a trade offer that you aren\'t the acceptor',
+        });
+      }
+      if (trade.status !== TradeStatus.PENDING) {
+        let message = 'Can\'t accept or recuse trade offer';
+        if (trade.status === TradeStatus.ACCEPTED) message = 'Trade already accepted';
+        else if (trade.status === TradeStatus.RECUSED) message = 'Trade already recused';
+        return res.status(400).send({
+          message,
+          status: trade.status,
+        });
+      }
+
+      if (action === 'ACCEPT') {
+        return database.trade.acceptTrade(trade.uuid).then(() => {
+          res.status(200).send({
+            uuid: tradeId,
+            status: TradeStatus.ACCEPTED,
+          });
+        });
+      }
+      if (action === 'RECUSE') {
+        return database.trade.setStatus(trade.uuid, TradeStatus.RECUSED).then(() => {
+          res.status(200).send({
+            uuid: tradeId,
+            status: TradeStatus.RECUSED,
+          });
+        });
+      }
+      return res.status(400).send({
+        message: `Invalid action: ${action} ( use ACCEPT or RECUSE )`,
+      });
+    })
+    .catch((err) => res.status(500).send({
+      message: 'Internal Server Error :(',
+      error: err,
+    }));
 }
 
 function listAllTradeOffers(req, res) {

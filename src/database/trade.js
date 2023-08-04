@@ -70,6 +70,29 @@ module.exports = (knex) => {
       .then(() => trx('itemtrade').insert(tradeItems)));
   }
 
+  function acceptTrade(tradeUuid) {
+    const query = 'UPDATE ?? SET ?? = ?? FROM ?? WHERE ?? = ?? AND ?? = ?';
+    const bindings = [
+      'item',
+      'owner',
+      'itemtrade.recipient',
+      'itemtrade',
+      'itemtrade.item',
+      'item.uuid',
+      'itemtrade.trade',
+      tradeUuid,
+    ];
+
+    return knex.transaction((trx) => {
+      knex('trade')
+        .where({ uuid: tradeUuid })
+        .update({ status: TradeStatus.ACCEPTED })
+        .then(() => knex.raw(query, bindings))
+        .then(trx.commit)
+        .then(trx.rollback);
+    });
+  }
+
   return {
     findOne,
     setStatus,
@@ -77,5 +100,6 @@ module.exports = (knex) => {
     getItemsFromPlayer,
     getUntradeableItems,
     createTrade,
+    acceptTrade,
   };
 };
