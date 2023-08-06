@@ -6,6 +6,6 @@ const inventoryController = require('./trade.controller');
 router.post('/', inventoryController.sendTradeOffer);
 router.post('/offer', inventoryController.acceptOrDeclineTradeOffer);
 router.get('/offer', inventoryController.listAllTradeOffers);
-router.delete('/offer', inventoryController.cancelTradeOffer);
+router.delete('/offer/:tradeId', inventoryController.cancelTradeOffer);
 
 module.exports = router;
