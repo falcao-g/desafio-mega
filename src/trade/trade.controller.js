@@ -3,6 +3,10 @@ const { database } = require('../database/knex');
 const { TradeStatus } = require('../database/type/tradestatus');
 const { ValidationError } = require('../error/ValidationError');
 
+function validateUuidV4(uuid) {
+  return uuidValidate(uuid) && uuidVersion(uuid) === 4;
+}
+
 // Verify if all required data was sent by the user
 function extractTradeOfferFromBody(body) {
   // Proposer ID should be get from JWT Payload
@@ -29,7 +33,7 @@ function extractTradeOfferFromBody(body) {
 function validateItemsUuid(tradeOffer) {
   const allTradingItems = [...tradeOffer.offeredItems, ...tradeOffer.requestedItems];
   const invalidUuids = allTradingItems.reduce((prevInvalidUuids, itemUuid) => {
-    const isValidUuidV4 = uuidValidate(itemUuid) && uuidVersion(itemUuid) === 4;
+    const isValidUuidV4 = validateUuidV4(itemUuid);
     if (!isValidUuidV4) prevInvalidUuids.push(itemUuid);
     return prevInvalidUuids;
   }, []);
@@ -135,24 +139,16 @@ function acceptOrDeclineTradeOffer(req, res) {
     }));
 }
 
-function listAllTradeOffers(req, res) {
-  const { playerId } = req.body.payload;
-  if (!playerId) {
-    // Shouldn't occur with JWT authentication
-    res.status(400).send({ message: 'playerId unspecified' });
-    return;
-  }
+async function validatePlayerById(playerId) {
+  const isUuidValid = validateUuidV4(playerId);
+  if (!isUuidValid) throw new ValidationError('Invalid UUID');
+  const player = await database.player.findOne(playerId);
+  if (!player) throw new ValidationError('Unknown player');
+  return player;
+}
 
-  database.trade.findAllTradesFromPlayer(playerId)
-    .then((allPlayerTrades) => {
-      res.status(200).send(allPlayerTrades);
-    })
-    .catch((err) => {
-      res.status(500).send({
-        message: 'Internal Server Error :(',
-        error: err,
-      });
-    });
+function findAllTradesFromPlayer(playerId) {
+  return database.trade.findAllTradesFromPlayer(playerId);
 }
 
 function cancelTradeOffer(req, res) {
@@ -203,7 +199,9 @@ module.exports = {
   validateAllItemsAreAvailableForTrade,
   placeTradeOffer,
 
+  validatePlayerById,
+  findAllTradesFromPlayer,
+
   acceptOrDeclineTradeOffer,
-  listAllTradeOffers,
   cancelTradeOffer,
 };
