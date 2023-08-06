@@ -1,3 +1,4 @@
+const { TradeStatus } = require('../database/type/tradestatus');
 const controller = require('./trade.controller');
 
 const OK = 200;
@@ -12,7 +13,7 @@ async function sendTradeOffer(req, res) {
     await controller.placeTradeOffer(tradeOffer);
     res.status(CREATED).send(tradeOffer);
   } catch (err) {
-    res.status(err.httpSatus).send({ message: err.message });
+    res.status(err.httpStatus).send({ message: err.message });
   }
 }
 
@@ -26,7 +27,7 @@ function declineTradeOffer(req, res) {
 
 async function listAllTradeOffersFromPlayer(req, res) {
   try {
-    const player = await controller.validatePlayerById(req.body.payload?.playerId);
+    const player = await controller.getPlayerById(req.body.payload?.playerId);
     const playerTrades = await controller.findAllTradesFromPlayer(player.uuid);
     res.status(OK).send(playerTrades);
   } catch (err) {
@@ -34,8 +35,15 @@ async function listAllTradeOffersFromPlayer(req, res) {
   }
 }
 
-function cancelTradeOffer(req, res) {
-  res.send({ message: 'TODO: Implement' });
+async function cancelTradeOffer(req, res) {
+  try {
+    const player = await controller.getPlayerById(req.body.payload?.playerId);
+    const trade = await controller.getTradeById(req.params.tradeId);
+    await controller.cancelTradeOffer(trade, player.uuid);
+    res.status(OK).send({ ...trade, status: TradeStatus.CANCELED });
+  } catch (err) {
+    res.status(err.httpStatus).send({ message: err.message });
+  }
 }
 
 module.exports = {

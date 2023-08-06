@@ -2,6 +2,9 @@ const { validate: uuidValidate, version: uuidVersion } = require('uuid');
 const { database } = require('../database/knex');
 const { TradeStatus } = require('../database/type/tradestatus');
 const { ValidationError } = require('../error/ValidationError');
+const { InvalidActionError } = require('../error/InvalidActionError');
+
+const HTTP_FORBIDDEN = 403;
 
 function validateUuidV4(uuid) {
   return uuidValidate(uuid) && uuidVersion(uuid) === 4;
@@ -139,7 +142,7 @@ function acceptOrDeclineTradeOffer(req, res) {
     }));
 }
 
-async function validatePlayerById(playerId) {
+async function getPlayerById(playerId) {
   const isUuidValid = validateUuidV4(playerId);
   if (!isUuidValid) throw new ValidationError('Invalid UUID');
   const player = await database.player.findOne(playerId);
@@ -151,45 +154,30 @@ function findAllTradesFromPlayer(playerId) {
   return database.trade.findAllTradesFromPlayer(playerId);
 }
 
-function cancelTradeOffer(req, res) {
-  const { playerId } = req.body.payload;
-  const { tradeId } = req.params;
+async function getTradeById(tradeUuid) {
+  const isUuidValid = validateUuidV4(tradeUuid);
+  if (!isUuidValid) throw new ValidationError('Invalid UUID');
+  const trade = await database.trade.findOne(tradeUuid);
+  if (!trade) throw new ValidationError('Unknown trade');
+  return trade;
+}
 
-  if (!playerId) {
-    // Shouldn't occur with JWT authentication
-    res.status(400).send({ message: 'playerId unspecified' });
-    return;
+function cancelTradeOffer(tradeOffer, playerUuid) {
+  const playerDidntProposedTheTrade = tradeOffer.proposer !== playerUuid;
+  if (playerDidntProposedTheTrade) throw new InvalidActionError(tradeOffer.status, 'You can\'t cancel a trade offer that you didn\'t proposed', HTTP_FORBIDDEN);
+
+  switch (tradeOffer.status) {
+    case TradeStatus.PENDING:
+      return database.trade.setStatus(tradeOffer.uuid, TradeStatus.CANCELED);
+    case TradeStatus.CANCELED:
+      throw new InvalidActionError(tradeOffer.status, 'Trade already canceled');
+    case TradeStatus.ACCEPTED:
+      throw new InvalidActionError(tradeOffer.status, 'The acceptor already accepted the trade');
+    case TradeStatus.RECUSED:
+      throw new InvalidActionError(tradeOffer.status, 'The acceptor already recused the trade');
+    default:
+      throw new InvalidActionError(tradeOffer.status);
   }
-
-  database.trade.findOne(tradeId)
-    .then((trade) => {
-      const playerDidntProposedTheTrade = trade.proposer !== playerId;
-      if (playerDidntProposedTheTrade) {
-        return res.status(403).send({
-          message: 'You can\'t cancel a trade offer that you didn\'t proposed',
-        });
-      }
-      if (trade.status !== TradeStatus.PENDING) {
-        let message = 'Can\'t cancel trade offer';
-        if (trade.status === TradeStatus.CANCELED) message = 'Trade already canceled';
-        return res.status(400).send({
-          message,
-          status: trade.status,
-        });
-      }
-
-      return database.trade.setStatus(trade.uuid, TradeStatus.CANCELED).then(() => {
-        res.status(200).send({
-          uuid: tradeId,
-          status: TradeStatus.CANCELED,
-        });
-      });
-    })
-
-    .catch((err) => res.status(500).send({
-      message: 'Internal Server Error :(',
-      error: err,
-    }));
 }
 
 module.exports = {
@@ -199,9 +187,11 @@ module.exports = {
   validateAllItemsAreAvailableForTrade,
   placeTradeOffer,
 
-  validatePlayerById,
+  getPlayerById,
   findAllTradesFromPlayer,
 
-  acceptOrDeclineTradeOffer,
+  getTradeById,
   cancelTradeOffer,
+
+  acceptOrDeclineTradeOffer,
 };
