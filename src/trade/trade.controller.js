@@ -1,80 +1,77 @@
+const { validate: uuidValidate, version: uuidVersion } = require('uuid');
 const { database } = require('../database/knex');
 const { TradeStatus } = require('../database/type/tradestatus');
+const { ValidationError } = require('../error/ValidationError');
 
-async function sendTradeOffer(req, res) {
-  const proposer = req.body.payload.playerId;
+// Verify if all required data was sent by the user
+function extractTradeOfferFromBody(body) {
+  // Proposer ID should be get from JWT Payload
+  const proposer = body.payload.playerId;
   const {
     acceptor,
     offeredItems,
     requestedItems,
-  } = req.body;
+  } = body;
 
   // Verify if any of the required data is undefined
   const isAnyFieldUndefined = !proposer || !acceptor || !offeredItems || !requestedItems;
-  if (isAnyFieldUndefined) {
-    return res.status(400).send({
-      message: 'The fields acceptor, offeredItems and requestedItems are required',
-    });
-  }
+  if (isAnyFieldUndefined) throw new ValidationError('The fields acceptor, offeredItems and requestedItems are required');
 
   // Verify if offeredItems and requestedItems are arrays
-  const tradeItemsAreArray = Array.isArray(offeredItems) && Array.isArray(requestedItems);
-  if (!tradeItemsAreArray) {
-    return res.status(400).send({
-      message: 'offeredItems and requestedItems must be an array of items uuid',
-    });
+  const isItemFieldsArray = Array.isArray(offeredItems) && Array.isArray(requestedItems);
+  if (!isItemFieldsArray) throw new ValidationError('offeredItems and requestedItems must be an array of items uuid');
+
+  return {
+    proposer, acceptor, offeredItems, requestedItems,
+  };
+}
+
+function validateItemsUuid(tradeOffer) {
+  const allTradingItems = [...tradeOffer.offeredItems, ...tradeOffer.requestedItems];
+  const invalidUuids = allTradingItems.reduce((prevInvalidUuids, itemUuid) => {
+    const isValidUuidV4 = uuidValidate(itemUuid) && uuidVersion(itemUuid) === 4;
+    if (!isValidUuidV4) prevInvalidUuids.push(itemUuid);
+    return prevInvalidUuids;
+  }, []);
+  if (invalidUuids.length > 0) {
+    const errorMessage = 'There are invalid UUIDs:';
+    const SP = ' ';
+    invalidUuids.forEach((invalidUuid) => errorMessage.concat(`${SP}${invalidUuid}`));
+    throw new ValidationError(errorMessage);
   }
+}
 
-  // Validate if each player owns the specified items
-  try {
-    const proposerOwnedItems = await database.trade.getItemsFromPlayer(proposer, offeredItems);
-    const proposerOwnsAllTheOfferedItems = offeredItems.length === proposerOwnedItems.length;
-    if (!proposerOwnsAllTheOfferedItems) {
-      return res.status(400).send({
-        message: 'You cannot offer items that you don\'t own',
-      });
-    }
+// Validate if each player owns the specified items
+async function validatePlayersOwnsRespectiveItems(tradeOffer) {
+  const {
+    proposer, acceptor, offeredItems, requestedItems,
+  } = tradeOffer;
+  const proposerOwnedItems = await database.trade.getItemsFromPlayer(proposer, offeredItems);
+  const isProposerOwnerOfOfferedItems = offeredItems.length === proposerOwnedItems.length;
+  if (!isProposerOwnerOfOfferedItems) throw new ValidationError('You cannot offer items that you don\'t own');
 
-    const acceptorOwnedItems = await database.trade.getItemsFromPlayer(acceptor, requestedItems);
-    const acceptorOwnsAllTheRequestedItems = requestedItems.length === acceptorOwnedItems.length;
-    if (!acceptorOwnsAllTheRequestedItems) {
-      return res.status(400).send({
-        message: 'You cannot request items that the acceptor doesn\'t own',
-      });
-    }
-  } catch (err) {
-    return res.status(400).send({
-      message: 'Check and verify the data sent',
-      error: err,
-    });
-  }
+  const acceptorOwnedItems = await database.trade.getItemsFromPlayer(acceptor, requestedItems);
+  const isAcceptorOwnerOfRequestedItems = requestedItems.length === acceptorOwnedItems.length;
+  if (!isAcceptorOwnerOfRequestedItems) throw new ValidationError('You cannot request items that the acceptor doesn\'t own');
+}
 
+async function validateAllItemsAreAvailableForTrade(tradeOffer) {
   // Verify if every item is available for new trades
-  try {
-    const allTradingItems = [...offeredItems, ...requestedItems];
-    const unavailableItems = await database.trade.getUntradeableItems(allTradingItems);
-    if (unavailableItems.length > 0) {
-      return res.status(409).send({
-        message: 'There are items on pending trades',
-        items: unavailableItems,
-      });
-    }
-  } catch (err) {
-    return res.status(500).send({
-      message: 'Internal Server Error :(',
-      error: err,
-    });
+  const allTradingItems = [...tradeOffer.offeredItems, ...tradeOffer.requestedItems];
+  const unavailableItems = await database.trade.getUntradeableItems(allTradingItems);
+  if (unavailableItems.length > 0) {
+    const errorMessage = 'There are items unavailable for trade:';
+    const SP = ' ';
+    unavailableItems.forEach((invalidUuid) => errorMessage.concat(`${SP}${invalidUuid}`));
+    throw new ValidationError(errorMessage);
   }
+}
 
-  try {
-    await database.trade.createTrade(proposer, acceptor, offeredItems, requestedItems);
-    return res.status(201).end();
-  } catch (err) {
-    return res.status(500).send({
-      message: 'Internal Server Error :(',
-      error: err,
-    });
-  }
+async function placeTradeOffer(tradeOffer) {
+  const {
+    proposer, acceptor, offeredItems, requestedItems,
+  } = tradeOffer;
+  await database.trade.createTrade(proposer, acceptor, offeredItems, requestedItems);
 }
 
 function acceptOrDeclineTradeOffer(req, res) {
@@ -200,7 +197,12 @@ function cancelTradeOffer(req, res) {
 }
 
 module.exports = {
-  sendTradeOffer,
+  extractTradeOfferFromBody,
+  validateItemsUuid,
+  validatePlayersOwnsRespectiveItems,
+  validateAllItemsAreAvailableForTrade,
+  placeTradeOffer,
+
   acceptOrDeclineTradeOffer,
   listAllTradeOffers,
   cancelTradeOffer,
