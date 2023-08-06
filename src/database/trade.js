@@ -39,7 +39,10 @@ module.exports = (knex) => {
       .andWhere('trade.status', TradeStatus.PENDING);
   }
 
-  function createTrade(proposer, acceptor, offeredItems, requestedItems) {
+  function createTrade(trade) {
+    const {
+      proposer, acceptor, offeredItems, requestedItems,
+    } = trade;
     const tradeUuid = v4();
     const tradeItems = [];
 

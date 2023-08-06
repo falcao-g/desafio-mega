@@ -1,207 +1,173 @@
+const { validate: uuidValidate, version: uuidVersion } = require('uuid');
 const { database } = require('../database/knex');
 const { TradeStatus } = require('../database/type/tradestatus');
+const { ValidationError } = require('../error/ValidationError');
+const { InvalidActionError } = require('../error/InvalidActionError');
 
-async function sendTradeOffer(req, res) {
-  const proposer = req.body.payload.playerId;
+const HTTP_FORBIDDEN = 403;
+
+function validateUuidV4(uuid) {
+  return uuidValidate(uuid) && uuidVersion(uuid) === 4;
+}
+
+// Verify if all required data was sent by the user
+function extractTradeOfferFromBody(body) {
+  // Proposer ID should be get from JWT Payload
+  const proposer = body.payload.playerId;
   const {
     acceptor,
     offeredItems,
     requestedItems,
-  } = req.body;
+  } = body;
 
   // Verify if any of the required data is undefined
   const isAnyFieldUndefined = !proposer || !acceptor || !offeredItems || !requestedItems;
-  if (isAnyFieldUndefined) {
-    return res.status(400).send({
-      message: 'The fields acceptor, offeredItems and requestedItems are required',
-    });
-  }
+  if (isAnyFieldUndefined) throw new ValidationError('The fields acceptor, offeredItems and requestedItems are required');
 
   // Verify if offeredItems and requestedItems are arrays
-  const tradeItemsAreArray = Array.isArray(offeredItems) && Array.isArray(requestedItems);
-  if (!tradeItemsAreArray) {
-    return res.status(400).send({
-      message: 'offeredItems and requestedItems must be an array of items uuid',
-    });
+  const isItemFieldsArray = Array.isArray(offeredItems) && Array.isArray(requestedItems);
+  if (!isItemFieldsArray) throw new ValidationError('offeredItems and requestedItems must be an array of items uuid');
+
+  return {
+    proposer, acceptor, offeredItems, requestedItems,
+  };
+}
+
+function validateItemsUuid(tradeOffer) {
+  const allTradingItems = [...tradeOffer.offeredItems, ...tradeOffer.requestedItems];
+  const invalidUuids = allTradingItems.reduce((prevInvalidUuids, itemUuid) => {
+    const isValidUuidV4 = validateUuidV4(itemUuid);
+    if (!isValidUuidV4) prevInvalidUuids.push(itemUuid);
+    return prevInvalidUuids;
+  }, []);
+  if (invalidUuids.length > 0) {
+    const errorMessage = 'There are invalid UUIDs:';
+    const SP = ' ';
+    invalidUuids.forEach((invalidUuid) => errorMessage.concat(`${SP}${invalidUuid}`));
+    throw new ValidationError(errorMessage);
   }
+}
 
-  // Validate if each player owns the specified items
-  try {
-    const proposerOwnedItems = await database.trade.getItemsFromPlayer(proposer, offeredItems);
-    const proposerOwnsAllTheOfferedItems = offeredItems.length === proposerOwnedItems.length;
-    if (!proposerOwnsAllTheOfferedItems) {
-      return res.status(400).send({
-        message: 'You cannot offer items that you don\'t own',
-      });
-    }
+// Validate if each player owns the specified items
+async function validatePlayersOwnsRespectiveItems(tradeOffer) {
+  const {
+    proposer, acceptor, offeredItems, requestedItems,
+  } = tradeOffer;
+  const proposerOwnedItems = await database.trade.getItemsFromPlayer(proposer, offeredItems);
+  const isProposerOwnerOfOfferedItems = offeredItems.length === proposerOwnedItems.length;
+  if (!isProposerOwnerOfOfferedItems) throw new ValidationError('You cannot offer items that you don\'t own');
 
-    const acceptorOwnedItems = await database.trade.getItemsFromPlayer(acceptor, requestedItems);
-    const acceptorOwnsAllTheRequestedItems = requestedItems.length === acceptorOwnedItems.length;
-    if (!acceptorOwnsAllTheRequestedItems) {
-      return res.status(400).send({
-        message: 'You cannot request items that the acceptor doesn\'t own',
-      });
-    }
-  } catch (err) {
-    return res.status(400).send({
-      message: 'Check and verify the data sent',
-      error: err,
-    });
-  }
+  const acceptorOwnedItems = await database.trade.getItemsFromPlayer(acceptor, requestedItems);
+  const isAcceptorOwnerOfRequestedItems = requestedItems.length === acceptorOwnedItems.length;
+  if (!isAcceptorOwnerOfRequestedItems) throw new ValidationError('You cannot request items that the acceptor doesn\'t own');
+}
 
+async function validateAllItemsAreAvailableForTrade(tradeOffer) {
   // Verify if every item is available for new trades
-  try {
-    const allTradingItems = [...offeredItems, ...requestedItems];
-    const unavailableItems = await database.trade.getUntradeableItems(allTradingItems);
-    if (unavailableItems.length > 0) {
-      return res.status(409).send({
-        message: 'There are items on pending trades',
-        items: unavailableItems,
-      });
-    }
-  } catch (err) {
-    return res.status(500).send({
-      message: 'Internal Server Error :(',
-      error: err,
-    });
-  }
-
-  try {
-    await database.trade.createTrade(proposer, acceptor, offeredItems, requestedItems);
-    return res.status(201).end();
-  } catch (err) {
-    return res.status(500).send({
-      message: 'Internal Server Error :(',
-      error: err,
-    });
+  const allTradingItems = [...tradeOffer.offeredItems, ...tradeOffer.requestedItems];
+  const unavailableItems = await database.trade.getUntradeableItems(allTradingItems);
+  if (unavailableItems.length > 0) {
+    const errorMessage = 'There are items unavailable for trade:';
+    const SP = ' ';
+    unavailableItems.forEach((invalidUuid) => errorMessage.concat(`${SP}${invalidUuid}`));
+    throw new ValidationError(errorMessage);
   }
 }
 
-function acceptOrDeclineTradeOffer(req, res) {
-  const { playerId } = req.body.payload;
-  const { tradeId, action } = req.body;
-
-  if (!playerId) {
-    // Shouldn't occur with JWT authentication
-    return res.status(400).send({ message: 'playerId unspecified' });
-  }
-
-  if (!tradeId) {
-    return res.status(400).send({ message: 'tradeId unspecified' });
-  }
-
-  if (!action) {
-    return res.status(400).send({ message: 'action unspecified ( ACCEPT or RECUSE )' });
-  }
-
-  return database.trade.findOne(tradeId)
-    .then((trade) => {
-      const playerDidntProposedTheTrade = trade.acceptor !== playerId;
-      if (playerDidntProposedTheTrade) {
-        return res.status(403).send({
-          message: 'You can\'t cancel a trade offer that you aren\'t the acceptor',
-        });
-      }
-      if (trade.status !== TradeStatus.PENDING) {
-        let message = 'Can\'t accept or recuse trade offer';
-        if (trade.status === TradeStatus.ACCEPTED) message = 'Trade already accepted';
-        else if (trade.status === TradeStatus.RECUSED) message = 'Trade already recused';
-        return res.status(400).send({
-          message,
-          status: trade.status,
-        });
-      }
-
-      if (action === 'ACCEPT') {
-        return database.trade.acceptTrade(trade.uuid).then(() => {
-          res.status(200).send({
-            uuid: tradeId,
-            status: TradeStatus.ACCEPTED,
-          });
-        });
-      }
-      if (action === 'RECUSE') {
-        return database.trade.setStatus(trade.uuid, TradeStatus.RECUSED).then(() => {
-          res.status(200).send({
-            uuid: tradeId,
-            status: TradeStatus.RECUSED,
-          });
-        });
-      }
-      return res.status(400).send({
-        message: `Invalid action: ${action} ( use ACCEPT or RECUSE )`,
-      });
-    })
-    .catch((err) => res.status(500).send({
-      message: 'Internal Server Error :(',
-      error: err,
-    }));
+async function placeTradeOffer(tradeOffer) {
+  const {
+    proposer, acceptor, offeredItems, requestedItems,
+  } = tradeOffer;
+  await database.trade.createTrade(proposer, acceptor, offeredItems, requestedItems);
 }
 
-function listAllTradeOffers(req, res) {
-  const { playerId } = req.body.payload;
-  if (!playerId) {
-    // Shouldn't occur with JWT authentication
-    res.status(400).send({ message: 'playerId unspecified' });
-    return;
-  }
+function acceptTradeOffer(tradeOffer, playerUuid) {
+  const isPlayerAcceptorOfTheTrade = tradeOffer.acceptor === playerUuid;
+  if (!isPlayerAcceptorOfTheTrade) throw new InvalidActionError(tradeOffer.status, 'You can\'t decline a trade offer that you didn\'t received', HTTP_FORBIDDEN);
 
-  database.trade.findAllTradesFromPlayer(playerId)
-    .then((allPlayerTrades) => {
-      res.status(200).send(allPlayerTrades);
-    })
-    .catch((err) => {
-      res.status(500).send({
-        message: 'Internal Server Error :(',
-        error: err,
-      });
-    });
+  switch (tradeOffer.status) {
+    case TradeStatus.PENDING:
+      return database.trade.createTrade(tradeOffer);
+    case TradeStatus.CANCELED:
+      throw new InvalidActionError(tradeOffer.status, 'The trade was canceled by the proposer');
+    case TradeStatus.ACCEPTED:
+      throw new InvalidActionError(tradeOffer.status, 'The trade has already been accepted');
+    case TradeStatus.RECUSED:
+      throw new InvalidActionError(tradeOffer.status, 'The trade has already been recused');
+    default:
+      throw new InvalidActionError(tradeOffer.status);
+  }
 }
 
-function cancelTradeOffer(req, res) {
-  const { playerId } = req.body.payload;
-  const { tradeId } = req.params;
+function declineTradeOffer(tradeOffer, playerUuid) {
+  const isPlayerAcceptorOfTheTrade = tradeOffer.acceptor === playerUuid;
+  if (!isPlayerAcceptorOfTheTrade) throw new InvalidActionError(tradeOffer.status, 'You can\'t decline a trade offer that you didn\'t received', HTTP_FORBIDDEN);
 
-  if (!playerId) {
-    // Shouldn't occur with JWT authentication
-    res.status(400).send({ message: 'playerId unspecified' });
-    return;
+  switch (tradeOffer.status) {
+    case TradeStatus.PENDING:
+      return database.trade.setStatus(tradeOffer.uuid, TradeStatus.RECUSED);
+    case TradeStatus.CANCELED:
+      throw new InvalidActionError(tradeOffer.status, 'The trade was canceled by the proposer');
+    case TradeStatus.ACCEPTED:
+      throw new InvalidActionError(tradeOffer.status, 'The trade has already been accepted');
+    case TradeStatus.RECUSED:
+      throw new InvalidActionError(tradeOffer.status, 'The trade has already been recused');
+    default:
+      throw new InvalidActionError(tradeOffer.status);
   }
+}
 
-  database.trade.findOne(tradeId)
-    .then((trade) => {
-      const playerDidntProposedTheTrade = trade.proposer !== playerId;
-      if (playerDidntProposedTheTrade) {
-        return res.status(403).send({
-          message: 'You can\'t cancel a trade offer that you didn\'t proposed',
-        });
-      }
-      if (trade.status !== TradeStatus.PENDING) {
-        let message = 'Can\'t cancel trade offer';
-        if (trade.status === TradeStatus.CANCELED) message = 'Trade already canceled';
-        return res.status(400).send({
-          message,
-          status: trade.status,
-        });
-      }
+async function getPlayerById(playerId) {
+  const isUuidValid = validateUuidV4(playerId);
+  if (!isUuidValid) throw new ValidationError('Invalid UUID');
+  const player = await database.player.findOne(playerId);
+  if (!player) throw new ValidationError('Unknown player');
+  return player;
+}
 
-      return database.trade.setStatus(trade.uuid, TradeStatus.CANCELED).then(() => {
-        res.status(200).send({
-          uuid: tradeId,
-          status: TradeStatus.CANCELED,
-        });
-      });
-    })
+function findAllTradesFromPlayer(playerId) {
+  return database.trade.findAllTradesFromPlayer(playerId);
+}
 
-    .catch((err) => res.status(500).send({
-      message: 'Internal Server Error :(',
-      error: err,
-    }));
+async function getTradeById(tradeUuid) {
+  const isUuidValid = validateUuidV4(tradeUuid);
+  if (!isUuidValid) throw new ValidationError('Invalid UUID');
+  const trade = await database.trade.findOne(tradeUuid);
+  if (!trade) throw new ValidationError('Unknown trade');
+  return trade;
+}
+
+function cancelTradeOffer(tradeOffer, playerUuid) {
+  const playerDidntProposedTheTrade = tradeOffer.proposer !== playerUuid;
+  if (playerDidntProposedTheTrade) throw new InvalidActionError(tradeOffer.status, 'You can\'t cancel a trade offer that you didn\'t proposed', HTTP_FORBIDDEN);
+
+  switch (tradeOffer.status) {
+    case TradeStatus.PENDING:
+      return database.trade.setStatus(tradeOffer.uuid, TradeStatus.CANCELED);
+    case TradeStatus.CANCELED:
+      throw new InvalidActionError(tradeOffer.status, 'Trade already canceled');
+    case TradeStatus.ACCEPTED:
+      throw new InvalidActionError(tradeOffer.status, 'The acceptor already accepted the trade');
+    case TradeStatus.RECUSED:
+      throw new InvalidActionError(tradeOffer.status, 'The acceptor already recused the trade');
+    default:
+      throw new InvalidActionError(tradeOffer.status);
+  }
 }
 
 module.exports = {
-  sendTradeOffer,
-  acceptOrDeclineTradeOffer,
-  listAllTradeOffers,
+  extractTradeOfferFromBody,
+  validateItemsUuid,
+  validatePlayersOwnsRespectiveItems,
+  validateAllItemsAreAvailableForTrade,
+  placeTradeOffer,
+
+  getPlayerById,
+  findAllTradesFromPlayer,
+
+  getTradeById,
   cancelTradeOffer,
+
+  acceptTradeOffer,
+  declineTradeOffer,
 };
