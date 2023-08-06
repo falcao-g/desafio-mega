@@ -81,65 +81,40 @@ async function placeTradeOffer(tradeOffer) {
   await database.trade.createTrade(proposer, acceptor, offeredItems, requestedItems);
 }
 
-function acceptOrDeclineTradeOffer(req, res) {
-  const { playerId } = req.body.payload;
-  const { tradeId, action } = req.body;
+function acceptTradeOffer(tradeOffer, playerUuid) {
+  const isPlayerAcceptorOfTheTrade = tradeOffer.acceptor === playerUuid;
+  if (!isPlayerAcceptorOfTheTrade) throw new InvalidActionError(tradeOffer.status, 'You can\'t decline a trade offer that you didn\'t received', HTTP_FORBIDDEN);
 
-  if (!playerId) {
-    // Shouldn't occur with JWT authentication
-    return res.status(400).send({ message: 'playerId unspecified' });
+  switch (tradeOffer.status) {
+    case TradeStatus.PENDING:
+      return database.trade.createTrade(tradeOffer);
+    case TradeStatus.CANCELED:
+      throw new InvalidActionError(tradeOffer.status, 'The trade was canceled by the proposer');
+    case TradeStatus.ACCEPTED:
+      throw new InvalidActionError(tradeOffer.status, 'The trade has already been accepted');
+    case TradeStatus.RECUSED:
+      throw new InvalidActionError(tradeOffer.status, 'The trade has already been recused');
+    default:
+      throw new InvalidActionError(tradeOffer.status);
   }
+}
 
-  if (!tradeId) {
-    return res.status(400).send({ message: 'tradeId unspecified' });
+function declineTradeOffer(tradeOffer, playerUuid) {
+  const isPlayerAcceptorOfTheTrade = tradeOffer.acceptor === playerUuid;
+  if (!isPlayerAcceptorOfTheTrade) throw new InvalidActionError(tradeOffer.status, 'You can\'t decline a trade offer that you didn\'t received', HTTP_FORBIDDEN);
+
+  switch (tradeOffer.status) {
+    case TradeStatus.PENDING:
+      return database.trade.setStatus(tradeOffer.uuid, TradeStatus.RECUSED);
+    case TradeStatus.CANCELED:
+      throw new InvalidActionError(tradeOffer.status, 'The trade was canceled by the proposer');
+    case TradeStatus.ACCEPTED:
+      throw new InvalidActionError(tradeOffer.status, 'The trade has already been accepted');
+    case TradeStatus.RECUSED:
+      throw new InvalidActionError(tradeOffer.status, 'The trade has already been recused');
+    default:
+      throw new InvalidActionError(tradeOffer.status);
   }
-
-  if (!action) {
-    return res.status(400).send({ message: 'action unspecified ( ACCEPT or RECUSE )' });
-  }
-
-  return database.trade.findOne(tradeId)
-    .then((trade) => {
-      const playerDidntProposedTheTrade = trade.acceptor !== playerId;
-      if (playerDidntProposedTheTrade) {
-        return res.status(403).send({
-          message: 'You can\'t cancel a trade offer that you aren\'t the acceptor',
-        });
-      }
-      if (trade.status !== TradeStatus.PENDING) {
-        let message = 'Can\'t accept or recuse trade offer';
-        if (trade.status === TradeStatus.ACCEPTED) message = 'Trade already accepted';
-        else if (trade.status === TradeStatus.RECUSED) message = 'Trade already recused';
-        return res.status(400).send({
-          message,
-          status: trade.status,
-        });
-      }
-
-      if (action === 'ACCEPT') {
-        return database.trade.acceptTrade(trade.uuid).then(() => {
-          res.status(200).send({
-            uuid: tradeId,
-            status: TradeStatus.ACCEPTED,
-          });
-        });
-      }
-      if (action === 'RECUSE') {
-        return database.trade.setStatus(trade.uuid, TradeStatus.RECUSED).then(() => {
-          res.status(200).send({
-            uuid: tradeId,
-            status: TradeStatus.RECUSED,
-          });
-        });
-      }
-      return res.status(400).send({
-        message: `Invalid action: ${action} ( use ACCEPT or RECUSE )`,
-      });
-    })
-    .catch((err) => res.status(500).send({
-      message: 'Internal Server Error :(',
-      error: err,
-    }));
 }
 
 async function getPlayerById(playerId) {
@@ -193,5 +168,6 @@ module.exports = {
   getTradeById,
   cancelTradeOffer,
 
-  acceptOrDeclineTradeOffer,
+  acceptTradeOffer,
+  declineTradeOffer,
 };

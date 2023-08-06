@@ -17,12 +17,26 @@ async function sendTradeOffer(req, res) {
   }
 }
 
-function acceptTradeOffer(req, res) {
-  res.send({ message: 'TODO: Implement' });
+async function acceptTradeOffer(req, res) {
+  try {
+    const player = await controller.getPlayerById(req.body.payload?.playerId);
+    const trade = await controller.getTradeById(req.params.tradeId);
+    await controller.acceptTradeOffer(trade, player.uuid);
+    res.status(OK).send({ ...trade, status: TradeStatus.ACCEPTED });
+  } catch (err) {
+    res.status(err.httpStatus).send({ message: err.message });
+  }
 }
 
-function declineTradeOffer(req, res) {
-  res.send({ message: 'TODO: Implement' });
+async function declineTradeOffer(req, res) {
+  try {
+    const player = await controller.getPlayerById(req.body.payload?.playerId);
+    const trade = await controller.getTradeById(req.params.tradeId);
+    await controller.declineTradeOffer(trade, player.uuid);
+    res.status(OK).send({ ...trade, status: TradeStatus.RECUSED });
+  } catch (err) {
+    res.status(err.httpStatus).send({ message: err.message });
+  }
 }
 
 async function listAllTradeOffersFromPlayer(req, res) {
