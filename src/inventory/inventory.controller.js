@@ -1,55 +1,42 @@
+const { validate: uuidValidate, version: uuidVersion } = require('uuid');
 const { database } = require('../database/knex');
+const { ValidationError } = require('../error/ValidationError');
+const { InvalidItemError } = require('../error/InvalidItemError');
 
-function getPlayerInventory(req, res) {
-  database.inventory.findAllItemsFromPlayer(req.params.playerId)
-    .then((allPlayerItems) => {
-      res.status(200).send(allPlayerItems);
-    })
-    .catch((err) => {
-      res.status(500).send({
-        message: 'Internal Server Error :(',
-        error: err,
-      });
-    });
+function validateUuidV4(uuid) {
+  return uuidValidate(uuid) && uuidVersion(uuid) === 4;
 }
 
-function getItemDetails(req, res) {
-  database.inventory.getItemDetails(req.params.playerId, req.params.itemId)
-    .then((itemDetails) => {
-      res.status(200).send(itemDetails);
-    })
-    .catch((err) => {
-      res.status(500).send({
-        message: 'Internal Server Error :(',
-        error: err,
-      });
-    });
+async function getPlayerById(playerId) {
+  const isUuidValid = validateUuidV4(playerId);
+  if (!isUuidValid) throw new ValidationError('Invalid UUID');
+  const player = await database.player.findOne(playerId);
+  if (!player) throw new ValidationError('Unknown player');
+  return player;
 }
 
-function sellItem(req, res) {
-  const { itemId } = req.query;
+function findAllItemsFromPlayer(playerId) {
+  return database.inventory.findAllItemsFromPlayer(playerId);
+}
 
-  if (!itemId) {
-    res.status(400).send({
-      message: 'You need to specify an itemId to sell',
-    });
-    return;
-  }
+async function getItemById(itemUuid, playerUuid) {
+  const isUuidValid = validateUuidV4(itemUuid);
+  if (!isUuidValid) throw new ValidationError('Invalid UUID');
+  const item = await database.inventory.findOne(itemUuid, playerUuid);
+  if (!item) throw new ValidationError('Unknown item');
+  return item;
+}
 
-  database.inventory.sellItem(itemId)
-    .then((message) => {
-      res.status(200).send(message);
-    })
-    .catch((err) => {
-      res.status(500).send({
-        message: 'Internal Server Error :(',
-        error: err,
-      });
-    });
+async function sellItem(item, playerUuid) {
+  const isItemOwner = item.owner === playerUuid;
+  if (!isItemOwner) throw new InvalidItemError();
+  const message = await database.inventory.sellOne(item);
+  return message;
 }
 
 module.exports = {
-  getPlayerInventory,
-  getItemDetails,
+  getPlayerById,
+  findAllItemsFromPlayer,
+  getItemById,
   sellItem,
 };
