@@ -2,8 +2,8 @@
 
 <section align='center'>
 <img alt="Top language" src="https://img.shields.io/github/languages/top/falcao-g/processo-mega">
-<img alt="Version express" src="https://img.shields.io/badge/express--red.svg?logo=express">
-<img alt="Version postgres" src="https://img.shields.io/badge/postgres--blue.svg?logo=postgresql">
+<img alt="Version express" src="https://img.shields.io/badge/express-^4.18.2-red.svg?logo=express">
+<img alt="Version postgres" src="https://img.shields.io/badge/postgres-^8.11.1-blue.svg?logo=postgresql">
 <img alt="All contributors" src="https://img.shields.io/badge/all contributors-3-green.svg">
 </section>
 
