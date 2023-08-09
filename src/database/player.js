@@ -6,7 +6,14 @@ module.exports = (knex) => {
       .first();
   }
 
+  function incrementeBalanceOfPlayer(playerUuid, balanceIncrement) {
+    return knex('player')
+      .increment({ balance: balanceIncrement })
+      .where({ uuid: playerUuid });
+  }
+
   return {
     findOne,
+    incrementeBalanceOfPlayer,
   };
 };
