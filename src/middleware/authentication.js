@@ -8,7 +8,6 @@ function authenticateToken(req, res, next) {
 
   const authHeader = req.headers.cookie;
   const token = authHeader && authHeader.split('=')[1];
-  console.log(token);
 
   if (token == null) {
     res.send(new AuthenticationError());
@@ -20,7 +19,6 @@ function authenticateToken(req, res, next) {
     }
 
     req.player = player;
-    console.log(player);
     return next();
   });
 }
