@@ -11,9 +11,7 @@ function validateUuidV4(uuid) {
 }
 
 // Verify if all required data was sent by the user
-function extractTradeOfferFromBody(body) {
-  // Proposer ID should be get from JWT Payload
-  const proposer = body.payload.playerId;
+function extractTradeOfferFromBody(proposer, body) {
   const {
     acceptor,
     offeredItems,
