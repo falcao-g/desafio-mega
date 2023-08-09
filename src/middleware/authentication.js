@@ -13,13 +13,13 @@ function authenticateToken(req, res, next) {
     res.send(new AuthenticationError());
   }
 
-  return jwt.verify(token, process.env.SECRET, (err, player) => {
+  jwt.verify(token, process.env.SECRET, (err, player) => {
     if (err) {
       res.send(new AuthenticationError());
     }
 
     req.player = player;
-    return next();
+    next();
   });
 }
 
