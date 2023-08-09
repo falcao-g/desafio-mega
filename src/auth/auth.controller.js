@@ -1,20 +1,39 @@
-function register(req, res) {
-  try {
-    res.send({ message: 'Registering the player' });
-  } catch (err) {
-    console.error('Error while registering the player', err.message);
-  }
+const bcrypt = require('bcrypt');
+const { database } = require('../database/knex');
+const { ValidationError } = require('../error/ValidationError');
+
+async function checkIfPlayerAlreadyExists(login) {
+  const player = await database.auth.findOne(login);
+  if (player) throw new ValidationError('Player already exists');
 }
 
-function login(req, res) {
-  try {
-    res.send({ message: 'Logging the player' });
-  } catch (err) {
-    console.error('Error while logging the player', err.message);
-  }
+async function encryptPassword(password) {
+  const saltRounds = 10;
+  const encryptedPassword = await bcrypt.hash(password, saltRounds);
+  return encryptedPassword;
+}
+
+async function registerPlayer(name, login, password) {
+  const encryptedPassword = await encryptPassword(password);
+  const message = await database.auth.registerPlayer(name, login, encryptedPassword);
+  return message;
+}
+
+async function getPlayerByLogin(login) {
+  const player = await database.auth.findOne(login);
+  if (!player) throw new ValidationError('Unknown player');
+  return player;
+}
+
+async function checkPassword(password, encryptedPassword) {
+  const isPasswordValid = await bcrypt.compare(password, encryptedPassword);
+  if (!isPasswordValid) throw new ValidationError('Invalid password');
+  return isPasswordValid;
 }
 
 module.exports = {
-  register,
-  login,
+  checkIfPlayerAlreadyExists,
+  registerPlayer,
+  getPlayerByLogin,
+  checkPassword,
 };
