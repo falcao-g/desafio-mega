@@ -34,9 +34,15 @@ async function sellItem(item, playerUuid) {
   return message;
 }
 
+async function getPlayerId(req) {
+  return !req.params.playerId ? req.player.uuid : req.params.playerId;
+}
+
 module.exports = {
   getPlayerById,
+  getPlayerId,
   findAllItemsFromPlayer,
+
   getItemById,
   sellItem,
 };
