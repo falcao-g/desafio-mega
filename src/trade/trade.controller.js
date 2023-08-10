@@ -73,10 +73,7 @@ async function validateAllItemsAreAvailableForTrade(tradeOffer) {
 }
 
 async function placeTradeOffer(tradeOffer) {
-  const {
-    proposer, acceptor, offeredItems, requestedItems,
-  } = tradeOffer;
-  await database.trade.createTrade(proposer, acceptor, offeredItems, requestedItems);
+  await database.trade.createTrade(tradeOffer);
 }
 
 function acceptTradeOffer(tradeOffer, playerUuid) {

@@ -30,5 +30,22 @@ module.exports = (knex) => {
     });
   }
 
-  return { findAllItemsFromPlayer, findOne, sellOne };
+  function insertOne(item) {
+    return knex('item')
+      .insert(item);
+  }
+
+  function deleteOneById(uuid) {
+    return knex('item')
+      .del()
+      .where({ uuid });
+  }
+
+  return {
+    findAllItemsFromPlayer,
+    findOne,
+    sellOne,
+    insertOne,
+    deleteOneById,
+  };
 };
