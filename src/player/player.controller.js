@@ -1,4 +1,5 @@
 const { validate: uuidValidate, version: uuidVersion } = require('uuid');
+const bcrypt = require('bcrypt');
 const { database } = require('../database/knex');
 const { ValidationError } = require('../error/ValidationError');
 
@@ -6,14 +7,14 @@ function validateUuidV4(uuid) {
   return uuidValidate(uuid) && uuidVersion(uuid) === 4;
 }
 
-function getPlayerProfile(playerUuid) {
+async function getPlayerProfile(playerUuid) {
   const isValidUuid = validateUuidV4(playerUuid);
   if (!isValidUuid) throw new ValidationError('Invalid player UUID');
   return database.player.findOne(playerUuid);
 }
 
-function getPlayerId(req) {
-  return !req.params.playerId ? req.body.payload?.playerId : req.params.playerId;
+async function getPlayerId(req) {
+  return !req.params.playerId ? req.player.uuid : req.params.playerId;
 }
 
 async function getPlayerById(playerId) {
@@ -25,15 +26,31 @@ async function getPlayerById(playerId) {
 }
 
 function getDepositQuantity(req) {
-  const { quantity } = req.body;
+  const quantity = Number(req.query.quantity);
   if (!quantity) throw new ValidationError('Missing field: quantity');
-  if (!Number.isInteger(quantity)) throw new ValidationError('Quantity isn\'t a integer');
+  if (Number.isNaN(quantity)) throw new ValidationError('Quantity isn\'t a integer');
   if (quantity < 0) throw new ValidationError('Quantity must be a positive integer');
   return quantity;
 }
 
-function addFundsTo(player, quantity) {
-  return database.player.incrementBalanceOfPlayer(player.uuid, quantity);
+async function addFundsTo(player, quantity) {
+  await database.player.incrementBalanceOfPlayer(player.uuid, quantity);
+  return `Added ${quantity} to balance succesfully`;
+}
+
+async function editPlayer(player, name, password) {
+  console.log(player);
+  const updatedPlayer = { ...player };
+  if (name) updatedPlayer.name = name;
+  console.log(password);
+  if (password) {
+    const saltRounds = 10;
+    const encryptedPassword = await bcrypt.hash(password, saltRounds);
+    updatedPlayer.password = encryptedPassword;
+  }
+  console.log(updatedPlayer);
+  await database.player.update(updatedPlayer);
+  return 'Player updated successfully';
 }
 
 module.exports = {
@@ -43,4 +60,6 @@ module.exports = {
   getPlayerById,
   getDepositQuantity,
   addFundsTo,
+
+  editPlayer,
 };
