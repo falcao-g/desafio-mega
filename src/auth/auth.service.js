@@ -11,7 +11,7 @@ async function register(req, res) {
     const message = await controller.registerPlayer(name, login, password);
     res.status(CREATED).send({ message });
   } catch (err) {
-    res.status(500).send({ message: err.message });
+    res.status(err.httpStatus ?? 500).send({ message: err.message });
   }
 }
 
@@ -28,7 +28,7 @@ async function access(req, res) {
       res.status(OK).send({ message: 'Login successful' });
     });
   } catch (err) {
-    res.status(500).send({ message: err.message });
+    res.status(err.httpStatus ?? 500).send({ message: err.message });
   }
 }
 

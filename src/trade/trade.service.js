@@ -14,7 +14,7 @@ async function sendTradeOffer(req, res) {
     await controller.placeTradeOffer(tradeOffer);
     res.status(CREATED).send(tradeOffer);
   } catch (err) {
-    res.status(err.httpStatus).send({ message: err.message });
+    res.status(err.httpStatus ?? 500).send({ message: err.message });
   }
 }
 
@@ -25,7 +25,7 @@ async function acceptTradeOffer(req, res) {
     await controller.acceptTradeOffer(trade, player.uuid);
     res.status(OK).send({ ...trade, status: TradeStatus.ACCEPTED });
   } catch (err) {
-    res.status(err.httpStatus).send({ message: err.message });
+    res.status(err.httpStatus ?? 500).send({ message: err.message });
   }
 }
 
@@ -36,7 +36,7 @@ async function declineTradeOffer(req, res) {
     await controller.declineTradeOffer(trade, player.uuid);
     res.status(OK).send({ ...trade, status: TradeStatus.RECUSED });
   } catch (err) {
-    res.status(err.httpStatus).send({ message: err.message });
+    res.status(err.httpStatus ?? 500).send({ message: err.message });
   }
 }
 
@@ -46,7 +46,7 @@ async function listAllTradeOffersFromPlayer(req, res) {
     const playerTrades = await controller.findAllTradesFromPlayer(player.uuid);
     res.status(OK).send(playerTrades);
   } catch (err) {
-    res.status(500).send({ message: err.message });
+    res.status(err.httpStatus ?? 500).send({ message: err.message });
   }
 }
 
@@ -57,7 +57,7 @@ async function cancelTradeOffer(req, res) {
     await controller.cancelTradeOffer(trade, player.uuid);
     res.status(OK).send({ ...trade, status: TradeStatus.CANCELED });
   } catch (err) {
-    res.status(err.httpStatus).send({ message: err.message });
+    res.status(err.httpStatus ?? 500).send({ message: err.message });
   }
 }
 
