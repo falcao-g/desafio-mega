@@ -28,7 +28,7 @@ async function getPlayerById(playerId) {
 function getDepositQuantity(req) {
   const quantity = Number(req.query.quantity);
   if (!quantity) throw new ValidationError('Missing field: quantity');
-  if (Number.isNaN(quantity)) throw new ValidationError('Quantity isn\'t a integer');
+  if (!Number.isInteger(quantity)) throw new ValidationError('Quantity isn\'t a integer');
   if (quantity < 0) throw new ValidationError('Quantity must be a positive integer');
   return quantity;
 }
@@ -39,16 +39,13 @@ async function addFundsTo(player, quantity) {
 }
 
 async function editPlayer(player, name, password) {
-  console.log(player);
   const updatedPlayer = { ...player };
   if (name) updatedPlayer.name = name;
-  console.log(password);
   if (password) {
     const saltRounds = 10;
     const encryptedPassword = await bcrypt.hash(password, saltRounds);
     updatedPlayer.password = encryptedPassword;
   }
-  console.log(updatedPlayer);
   await database.player.update(updatedPlayer);
   return 'Player updated successfully';
 }
