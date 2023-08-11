@@ -15,7 +15,7 @@ This project consists of a HTTP API that provides the following functionalities:
 
 - Register a new user
 - Login
-- Ability to chenge password, email and profile picture
+- Ability to change password, name and upload profile picture
 - Get all player items
 - See details of one specific item
 - Sell an item
@@ -33,6 +33,7 @@ This project consists of a HTTP API that provides the following functionalities:
 
 - Bcrypt
 - JWT
+- httpOnly cookies
 
 </details>
 
@@ -60,5 +61,33 @@ This project consists of a HTTP API that provides the following functionalities:
 - Husky
 - Lint Staged
 - Nodemon
+- Jest
 
 </details>
+
+<details>
+<summary>Image handling</summary>
+
+- Multer
+
+</details>
+
+## 📝 How to use
+
+### 📦 Prerequisites
+
+- [Node.js](https://nodejs.org/en/download/)
+- [PostgreSQL](https://www.postgresql.org/download/)
+
+### 🚀 Running the project
+
+1. Clone this repository
+2. Install the dependencies with `npm install`
+3. Create a `uploads` folder inside the `src` folder
+4. Create a new database in PostgreSQL
+5. Remove the `.example` extension from the `.env.example` file
+6. Fill the `.env` file with the database information
+7. In the `secret` field, you can generate one with `require('crypto').randomBytes(64).toString('hex');"` or use any other string
+8. Run the migrations with `knex migrate:latest`
+9. Run the project with `npm run dev:start`
+10. The server will be running on `http://localhost:8080`! 🎉
