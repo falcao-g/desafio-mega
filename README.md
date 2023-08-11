@@ -72,6 +72,17 @@ This project consists of a HTTP API that provides the following functionalities:
 
 </details>
 
+<details>
+<summary>Documentation</summary>
+
+- Swagger
+
+</details>
+
+## 📥 Endpoints documentation
+
+You can find the endpoints, parameters and responses documentation [here](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/falcao-g/processo-mega/main/endpoints.yaml).
+
 ## 📝 How to use
 
 ### 📦 Prerequisites
