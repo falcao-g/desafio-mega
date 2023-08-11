@@ -19,7 +19,9 @@ function authenticateToken(req, res, next) {
         throw new AuthenticationError();
       }
 
-      req.player = player;
+      // pass all player fields but password in req.player
+      const { password, ...playerWithoutPassword } = player;
+      req.player = playerWithoutPassword;
       next();
     });
   } catch (err) {
