@@ -1,0 +1,623 @@
+openapi: 3.0.3
+info:
+  title:  PS Back-end Mega 2023
+  version: 1.0.0
+tags:
+  - name: auth
+    description: Authenticate the player
+  - name: inventory
+    description: See inventory and sell items
+  - name: lootbox
+    description: See, buy and open loot boxes
+  - name: trade
+    description: Send and accept trade offers
+  - name: player
+    description: See and change player information
+paths:
+  /auth/signup:
+    post:
+      tags:
+        - auth
+      summary: Register a player
+      description: Register a new player
+      parameters:
+        - name: name
+          in: query
+          description: Player name
+          required: true
+          schema:
+            type: string
+        - name: login
+          in: query
+          description: Player login
+          required: true
+          schema:
+            type: string
+        - name: password
+          in: query
+          description: Player password
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/login:
+    post:
+      tags:
+        - auth
+      summary: Login a player
+      description: Authenticate the player
+      parameters:
+        - name: login
+          in: query
+          description: Player login
+          required: true
+          schema:
+            type: string
+        - name: password
+          in: query
+          description: Player password
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Player authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+        '401':
+          description: Player not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /inventory:
+    get:
+      tags:
+        - inventory
+      summary: Lists all items of the authenticated player
+      responses:
+        '200':
+          description: All items from player inventory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inventory'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /inventory/{playerId}:
+    get:
+      tags:
+        - inventory
+      summary: Lists all items of a player
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: All items from player inventory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inventory'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /inventory/item/{itemId}:
+    get:
+      tags:
+        - inventory
+      summary: Show an item from the authenticated player inventory
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: All item data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '400':
+          description: The item was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'    
+  /inventory/{playerId}/item/{itemId}:
+    get:
+      tags:
+        - inventory
+      summary: Show an item from the specified player inventory
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: All item data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '400':
+          description: The item was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /inventory/sell:
+    post:
+      tags:
+        - inventory
+      summary: Sell an item from the authenticated player inventory
+      parameters:
+        - name: itemId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Item sold successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Item doesn't exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /lootbox/shop:
+    get:
+      tags:
+        - lootbox
+      summary: List all loot boxes available for purchase
+      responses:
+        '200':
+          description: Array of loot boxes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LootBox'
+  /lootbox/shop/{lootboxId}:
+    post:
+      tags:
+        - lootbox
+      summary: Open a loot box
+      parameters:
+        - name: lootboxId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Item obtained from the loot box
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '400':
+          description: Loot box not found or not enough balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /player:
+    get:
+      tags:
+        - player
+      summary: Shows authenticated player info
+      responses:
+        '200':
+          description: All player info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerInfo'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - player
+      summary: Edits authenticated player info
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: password
+          in: query
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image file:
+                  type: string
+                  format: binary
+                
+      responses:
+        '200':
+          description: All player info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerInfo'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /player/{playerId}:
+    get:
+      tags:
+        - player
+      summary: Lists all items of a player
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: All player info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerInfo'
+        '400':
+          description: Player not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /player/balance/deposit:
+    get:
+      tags:
+        - player
+      summary: Add funds to authenticated player balance
+      parameters:
+        - name: quantity
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Increase user balance successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Quantity missing or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /trade:
+    post:
+      tags:
+        - trade
+      summary: Send a trade offer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Trade'
+      responses:
+        '201':
+          description: Trade offer sent
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /trade/offer:
+    get:
+      tags:
+        - trade
+      summary: Lists all trade offers related to the authenticated player
+      responses:
+        '200':
+          description: Trade offers sent and received
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Trade'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /trade/offer/{tradeId}/accept:
+    post:
+      tags:
+        - trade
+      summary: Accept a trade offer
+      parameters:
+        - name: tradeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Action performed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trade'
+        '400':
+          description: Action failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /trade/offer/{tradeId}/decline:
+    post:
+      tags:
+        - trade
+      summary: Decline a trade offer
+      parameters:
+        - name: tradeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Action performed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trade'
+        '400':
+          description: Action failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /trade/offer/{tradeId}:
+    delete:
+      tags:
+        - trade
+      summary: Cancel a trade offer
+      parameters:
+        - name: tradeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Action performed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trade'
+        '400':
+          description: Action failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+    Item:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/Type'
+        name:
+          type: string
+        value:
+          type: integer
+    ItemList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Item'
+    Inventory:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Item'
+    LootBox:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/Type'
+        price:
+          type: integer
+    Trade:
+      type: object
+      properties:
+        proposer:
+          type: string
+          format: uuid
+        acceptor:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/TradeStatus'
+        offeredItems:
+          $ref: '#/components/schemas/ItemList'
+        requestedItems:
+          $ref: '#/components/schemas/ItemList'
+    TradeStatus:
+      type: string
+      enum:
+        - PENDING
+        - ACCEPTED
+        - RECUSED
+        - CANCELED
+    Type:
+      type: string
+      enum:
+        - MATERIAL
+        - SWORD
+        - BOW
+        - CLOTH
+    Token:
+      type: object
+      properties:
+        token:
+          type: string
+          format: jwt
+    SuccessMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          
+    PlayerInfo:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        name:
+          type: string
+        login:
+          type: string
+        balance:
+          type: integer
+        picturePath:
+          type: string
