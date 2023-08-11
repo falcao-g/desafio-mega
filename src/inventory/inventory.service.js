@@ -9,7 +9,7 @@ async function listAllItemsFromPlayer(req, res) {
     const playerItems = await controller.findAllItemsFromPlayer(player.uuid);
     res.status(OK).send(playerItems);
   } catch (err) {
-    res.status(500).send({ message: err.message });
+    res.status(err.httpStatus ?? 500).send({ message: err.message });
   }
 }
 
@@ -19,7 +19,7 @@ async function getItemDetails(req, res) {
     const item = await controller.getItemById(req.params.itemId, playerId);
     res.status(OK).send(item);
   } catch (err) {
-    res.status(500).send({ message: err.message });
+    res.status(err.httpStatus ?? 500).send({ message: err.message });
   }
 }
 
@@ -30,7 +30,7 @@ async function sellItemFromPlayer(req, res) {
     const message = await controller.sellItem(item, player.uuid);
     res.status(OK).send({ message });
   } catch (err) {
-    res.status(500).send({ message: err.message });
+    res.status(err.httpStatus ?? 500).send({ message: err.message });
   }
 }
 
