@@ -10,7 +10,9 @@ function validateUuidV4(uuid) {
 async function getPlayerProfile(playerUuid) {
   const isValidUuid = validateUuidV4(playerUuid);
   if (!isValidUuid) throw new ValidationError('Invalid player UUID');
-  return database.player.findOne(playerUuid);
+  const player = await database.player.findOne(playerUuid);
+  if (!player) throw new ValidationError('Unknown player');
+  return player;
 }
 
 async function getPlayerId(req) {
