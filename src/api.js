@@ -5,6 +5,7 @@ const authRouter = require('./auth/auth.route');
 const inventoryRouter = require('./inventory/inventory.route');
 const tradeRouter = require('./trade/trade.route');
 const lootboxRouter = require('./lootbox/lootbox.route');
+const playerRouter = require('./player/player.route');
 
 api.use(bodyParser.json());
 
@@ -16,5 +17,6 @@ api.use('/auth', authRouter);
 api.use('/inventory', inventoryRouter);
 api.use('/trade', tradeRouter);
 api.use('/lootbox', lootboxRouter);
+api.use('/player', playerRouter);
 
 module.exports = { api };
