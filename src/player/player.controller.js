@@ -38,14 +38,15 @@ async function addFundsTo(player, quantity) {
   return `Added ${quantity} to balance succesfully`;
 }
 
-async function editPlayer(player, name, password) {
+async function editPlayer(player, name, password, picturePath) {
   const updatedPlayer = { ...player };
-  if (name) updatedPlayer.name = name;
+  updatedPlayer.name = name;
   if (password) {
     const saltRounds = 10;
     const encryptedPassword = await bcrypt.hash(password, saltRounds);
     updatedPlayer.password = encryptedPassword;
   }
+  updatedPlayer.picturePath = picturePath;
   await database.player.update(updatedPlayer);
   return 'Player updated successfully';
 }
