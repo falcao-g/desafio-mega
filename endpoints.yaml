@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title:  PS Back-end Mega 2023
+  title:  PS Back-end Mega Jr. 2023
   version: 1.0.0
 tags:
   - name: auth

@@ -1,4 +1,4 @@
-<h1 align='center'> PS Back-end Mega 2023 </h1>
+<h1 align='center'> PS Back-end Mega Jr. 2023 </h1>
 
 <p align='center'>
 <img alt="Top language" src="https://img.shields.io/github/languages/top/falcao-g/processo-mega">
