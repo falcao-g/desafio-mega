@@ -178,9 +178,7 @@ async function buyLootboxes(req, res) {
       await database.lootBox.addItemToPlayer(newItem);
       await database.lootBox.buyLootbox(player.uuid, lootBox);
 
-      return res.status(200).send({
-        message: `${lootBox.type} Lootbox bought successfully !`,
-      });
+      return res.status(200).send(newItem);
     }
 
     // Sword Lootbox
@@ -190,9 +188,7 @@ async function buyLootboxes(req, res) {
       await database.lootBox.addItemToPlayer(newItem);
       await database.lootBox.buyLootbox(player.uuid, lootBox);
 
-      return res.status(200).send({
-        message: `${lootBox.type} Lootbox bought successfully !`,
-      });
+      return res.status(200).send(newItem);
     }
 
     // Bow Lootbox
@@ -202,9 +198,7 @@ async function buyLootboxes(req, res) {
       await database.lootBox.addItemToPlayer(newItem);
       await database.lootBox.buyLootbox(player.uuid, lootBox);
 
-      return res.status(200).send({
-        message: `${lootBox.type} Lootbox bought successfully !`,
-      });
+      return res.status(200).send(newItem);
     }
 
     // Cloth Lootbox
@@ -214,9 +208,7 @@ async function buyLootboxes(req, res) {
       await database.lootBox.addItemToPlayer(newItem);
       await database.lootBox.buyLootbox(player.uuid, lootBox);
 
-      return res.status(200).send({
-        message: `${lootBox.type} Lootbox bought successfully !`,
-      });
+      return res.status(200).send(newItem);
     }
   } catch (err) {
     return res.status(400).send({
