@@ -78,7 +78,7 @@ function placeTradeOffer(tradeOffer) {
 
 function acceptTradeOffer(tradeOffer, playerUuid) {
   const isPlayerAcceptorOfTheTrade = tradeOffer.acceptor === playerUuid;
-  if (!isPlayerAcceptorOfTheTrade) throw new InvalidActionError(tradeOffer.status, 'You can\'t decline a trade offer that you didn\'t received', HTTP_FORBIDDEN);
+  if (!isPlayerAcceptorOfTheTrade) throw new InvalidActionError(tradeOffer.status, 'You can\'t accept a trade offer that you didn\'t received', HTTP_FORBIDDEN);
 
   switch (tradeOffer.status) {
     case TradeStatus.PENDING:
