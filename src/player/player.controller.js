@@ -40,7 +40,7 @@ async function addFundsTo(player, quantity) {
 
 async function editPlayer(player, name, password, picturePath) {
   const updatedPlayer = { ...player };
-  updatedPlayer.name = name;
+  if (name) updatedPlayer.name = name;
   if (password) {
     const saltRounds = 10;
     const encryptedPassword = await bcrypt.hash(password, saltRounds);
