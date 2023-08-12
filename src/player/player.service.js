@@ -1,4 +1,6 @@
+const path = require('path');
 const controller = require('./player.controller');
+const { ValidationError } = require('../error/ValidationError');
 
 const OK = 200;
 
@@ -14,9 +16,11 @@ async function getPlayerInfo(req, res) {
 
 async function editPlayerInfo(req, res) {
   try {
+    if (!req.file) throw new ValidationError('Missing file or file is not an image');
     const { name, password } = req.query;
+    const picturePath = path.relative(path.resolve(__dirname, '../..'), req.file.path);
     const player = await controller.getPlayerById(req.player.uuid);
-    const message = await controller.editPlayer(player, name, password);
+    const message = await controller.editPlayer(player, name, password, picturePath);
     res.status(OK).send({ message });
   } catch (err) {
     res.status(err.httpStatus ?? 500).send({ message: err.message });
