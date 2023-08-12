@@ -19,7 +19,7 @@ async function editPlayerInfo(req, res) {
     if (!req.file) throw new ValidationError('Missing file or file is not an image');
     if (!req.query.name) throw new ValidationError('Missing name');
     const { name, password } = req.query;
-    const picturePath = path.relative(__dirname, req.file.path);
+    const picturePath = path.relative(path.resolve(__dirname, '../..'), req.file.path);
     const player = await controller.getPlayerById(req.player.uuid);
     const message = await controller.editPlayer(player, name, password, picturePath);
     res.status(OK).send({ message });
