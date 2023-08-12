@@ -7,7 +7,6 @@ const CREATED = 201;
 async function register(req, res) {
   try {
     const { name, login, password } = req.query;
-    await controller.checkIfPlayerAlreadyExists(login);
     const message = await controller.registerPlayer(name, login, password);
     res.status(CREATED).send({ message });
   } catch (err) {
