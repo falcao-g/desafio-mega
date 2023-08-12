@@ -10,7 +10,7 @@ async function getPlayerInfo(req, res) {
     const profile = await controller.getPlayerProfile(playerId);
     res.status(OK).send(profile);
   } catch (err) {
-    res.status(500).send({ message: err.message });
+    res.status(err.httpStatus ?? 500).send({ message: err.message });
   }
 }
 
@@ -23,7 +23,7 @@ async function editPlayerInfo(req, res) {
     const message = await controller.editPlayer(player, name, password, picturePath);
     res.status(OK).send({ message });
   } catch (err) {
-    res.status(500).send({ message: err.message });
+    res.status(err.httpStatus ?? 500).send({ message: err.message });
   }
 }
 
@@ -34,7 +34,7 @@ async function depositFunds(req, res) {
     const message = await controller.addFundsTo(player, depositQuantity);
     res.status(OK).send({ message });
   } catch (err) {
-    res.status(500).send({ message: err.message });
+    res.status(err.httpStatus ?? 500).send({ message: err.message });
   }
 }
 
