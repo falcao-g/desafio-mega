@@ -12,6 +12,17 @@ module.exports = (knex) => {
       .first();
   }
 
+  function addItemToPlayer(newItem) {
+    return knex('item')
+      .insert({
+        uuid: newItem.uuid,
+        owner: newItem.owner,
+        type: newItem.type,
+        value: newItem.value,
+        name: newItem.name,
+      });
+  }
+
   async function buyLootbox(playerUuid, lootbox) {
     return knex.transaction(async (trx) => {
       await trx('player')
@@ -24,5 +35,6 @@ module.exports = (knex) => {
     listLootboxes,
     buyLootbox,
     findOneLootbox,
+    addItemToPlayer,
   };
 };
