@@ -7,7 +7,7 @@ const storage = multer.diskStorage({
     cb(null, path.join(__dirname, '../uploads')); // Specify the folder where you want to save the images
   },
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`); // Generate a unique filename
+    cb(null, `${req.player.login}.${file.mimetype.split('/')[1]}`); // Generate a unique filename
   },
 });
 
