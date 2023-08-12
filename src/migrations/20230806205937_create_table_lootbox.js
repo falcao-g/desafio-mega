@@ -4,7 +4,7 @@
  */
 exports.up = (knex) => knex.schema.createTable('lootbox', (table) => {
   table.uuid('uuid').primary();
-  table.specificType('itemtype').notNullable();
+  table.specificType('type', 'itemtype').notNullable();
   table.integer('price').notNullable();
 });
 
